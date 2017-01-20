@@ -8,6 +8,6 @@ setup(name = 'ebeamtools',
       author = 'Nik Hartman',
       author_email = 'nik.hartman@gmail.com',
       url = 'https://github.com/nikhartman/ebeamtools',
-      packages=['ascii', 'manualmarks'],,
-      install_requires = ['ezdxf', 'numpy', 'matplotlib']
+      packages=['ebeamtools'],
+      install_requires = ['ezdxf', 'numpy', 'matplotlib', 'scikit-image']
       )

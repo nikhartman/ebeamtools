@@ -89,6 +89,9 @@ def import_polyline(ent, warn=True):
         Returns
             np.ndarray: list of x,y coordinates for polygon vertices """
             
+            
+    # this thing does not work right
+    # I think it will need the same kind of logic as lwpolyline        
     with ent.points() as pnts:
         verts = np.array(pnts)
         return [remove_duplicate_vertices(verts[:,0:2])]
@@ -392,10 +395,10 @@ def get_vertices(dxf, layer, warn=True):
     for ent in dxf.entities:
         if ent.dxf.layer.upper().replace(' ', '_') == layer:
             i+=1
-            
+#             print(ent.dxftype())
             if ent.dxftype() == 'POLYLINE':
-                poly_list += import_polyline(ent)
-            
+#                 poly_list += import_polyline(ent)
+                pass
             elif ent.dxftype() == 'LWPOLYLINE':
                 poly_list += import_lwpolyline(ent)
                         
@@ -602,7 +605,7 @@ def bounding_box(poly_dict, origin='ignore'):
 ### Functions to define a write order for polygons ###
 ######################################################
 
-def sort_by_position(com, n = SMALLEST_SCALE):
+def typewriter_sort(com, n = SMALLEST_SCALE):
     """ Sort polygons left to right, top to bottom, based on the location of
         their center of mass.
         
@@ -871,7 +874,6 @@ class Layers:
         self.poly_dict = import_multiple_layers(self.dxf, self.layers, warn=True)
         
     def estimate_writetime(self, dose, current):
-        # fix this! 
         """ Estimate write time for given layers.
         
         Args:
@@ -902,9 +904,9 @@ class Layers:
         *junk, center = bounding_box(self.poly_dict, origin='center')
         center = center - offset
 
-        print('center of writefield: {0:.1f},{1:.1f}'.format(-center[0],-center[1]))
-        self.writefield_center = center
-        return(center)
+        print('center of writefield: {0:.1f},{1:.1f}'.format(-1*center[0],-1*center[1]))
+        self.writefield_center = -1*center
+        return(-1*center)
         
     def plot(self, ax, extent=None):
         """ Plot the layers from filename on ax with bounds given by size. 

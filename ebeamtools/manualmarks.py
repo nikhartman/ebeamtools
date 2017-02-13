@@ -9,18 +9,32 @@ from skimage import io, img_as_float
 from skimage import transform as tf
 import os
 from datetime import datetime
+import time
+import ezdxf
+from ebeamtools import dxfasc
 
 # sources:
 # http://stackoverflow.com/questions/21654008/matplotlib-drag-overlapping-points-interactively
 # http://www.pyimagesearch.com/2014/08/25/4-point-opencv-getperspective-transform-example/
 # http://stackoverflow.com/questions/28758079
 # http://matplotlib.org/users/event_handling.html
+        
+def box_center(verts):
+    # if all the points in an array form a box
+    # find the center of that box
+    
+    xmin = verts[:,0].min()
+    xmax = verts[:,0].max()
+    ymin = verts[:,1].min()
+    ymax = verts[:,1].max()
 
+    return np.array([xmin+xmax, ymin+ymax])/2.0
+    
 def order_points(points):
     """ order the points by angle phi measured from x-axis 
     
         returns: points in counterclockwise order """
-    shifted = points - np.mean(points, axis=0) # center points around origin
+    shifted = points - box_center(points) # center points around origin
     
     phi = np.arctan2(shifted[:,1],shifted[:,0])
     sumphi = abs(sum(phi)) #can be used to determine different square types
@@ -36,7 +50,15 @@ def order_points(points):
     else:
         # square edges parallel to axis
         return points
-        
+
+def get_scaling(px_array, dist_array):
+    # return pixels per distance
+    
+    px_rms = np.sqrt(np.sum((px_array-np.roll(px_array, -1, axis=0))**2))
+    dist_rms = np.sqrt(np.sum((dist_array-np.roll(dist_array, -1, axis=0))**2))
+    
+    return px_rms.max()/dist_rms.max()
+
 def warp_transform(im, pnts, src, val=0.0):
     """ warps image according to pnts and src 
         
@@ -111,13 +133,14 @@ def align_markers(im_file, real_pos):
     y_px, x_px = im.shape[0:2] # image extents
     
     real_pos = order_points(real_pos) # order alignment markers by phi
-    real_center = np.mean(real_pos, axis=0) # get center position in drawing units
+    real_center = box_center(real_pos) # get center position in drawing units
     
     # normalize marker positions
     # center at zero
     # scale to largest distance from center (* sqrt(2))
-    norm_pos = real_pos - np.mean(real_pos, axis=0)
+    norm_pos = real_pos - real_center
     norm_pos *= (np.sqrt(2)/np.sqrt(np.sum((norm_pos**2), axis = 1)).max())
+    norm_pos *= np.array([1,-1])
 
     fig, ax = plt.subplots(1,1, figsize = (10, 10*y_px/x_px))
     
@@ -147,31 +170,52 @@ def align_markers(im_file, real_pos):
     # get marker positions and center as located by user
     found_pos = np.array([c.get_xy()[0] for c in crosses]) 
     found_pos = order_points(found_pos)
-    found_center = np.mean(found_pos, axis=0) # rotate/scale about this point
+    found_center = box_center(found_pos) # rotate/scale about this point
     
     # calculate the correct marker locations
     final_pos = norm_pos*(np.sqrt(np.sum(((found_pos-found_center)**2), axis = 1)).max()/np.sqrt(2))
     final_pos += found_center
-    
+    final_pos = order_points(final_pos)
+
     im_warped = warp_transform(im,found_pos,final_pos,val=1.0)
         
     # get the proper resolution for the output
-    pixel_per_mm = np.sqrt(np.sum((final_pos[0]-final_pos[1])**2))/ \
-                        np.sqrt(np.sum((real_pos[0]-real_pos[1])**2))
+    pixel_per_mm = get_scaling(final_pos, real_pos)
     
-    scaling = 1.0   
+    scaling = 1.0 # not yet implemented
+                  # intended to compensate for rescaling where the 
+                  # dpi gets out of control
     
     # find where the lower left corner of the image will be located in the drawing
     insert_pos = (real_center - 
                     np.array([found_center[0],y_px-found_center[1]])/pixel_per_mm)
     
-    return scaling, insert_pos, im_warped
+    # save resulting image so it can be referenced in the dxf
+    dpi = pixel_per_mm*25.4 
+    output_file = im_file[:-4] + '_{0}.png'.format(datetime.now().strftime("%Y%m%d-%H%M%S"))
+#     with open(output_file, 'w') as fo:
+#         mpl.image.imsave(fo, im_warped, dpi = dpi)
+#         fo.flush()
+    mpl.image.imsave(output_file, im_warped, dpi = dpi)
+    return output_file, insert_pos, pixel_per_mm, (x_px, y_px)
 
-def save_image(output_file, im, pixel_per_mm):
-    """ save image as png """
-    mpl.image.imsave(output_file.format(datetime.now().strftime("%Y%m%d-%H%M%S")), 
-                            im_warped, dpi = pixel_per_mm*25.4)
-                            
 def align_from_file(im_file, dxf_file, marker_layer):
+    # i assume your files/folders are all in order
 
-    align_markers(im_file, real_pos)
+    # import alignment marker positions
+    dxf = ezdxf.readfile(dxf_file)
+    verts = dxfasc.get_vertices(dxf, marker_layer, warn=True)
+    com = dxfasc.polyUtility(verts, dxfasc.polyCOM)
+    
+    # do manual alignment and wait for output image
+    im_file_new, insert_pos, dpmm, im_shape = align_markers(im_file, com)
+    
+    # save output into dxf 'image_layer'
+    im_def = dxf.add_image_def(filename=im_file_new, size_in_pixel=im_shape)
+
+    # add first image
+    msp = dxf.modelspace()
+    msp.add_image(insert=insert_pos, size_in_units=(x/dpmm for x in im_shape),
+                  image_def=im_def,  dxfattribs={'layer': marker_layer})
+ 
+    dxf.saveas(dxf_file)

@@ -3,16 +3,11 @@
     
     The module has not been extensively tested. It may only work in a few use cases. 
     
-    The package dxfgrabber is required for DXF read/write operations. 
-    
-    to do:
-        0. implement some sort of dose scaling/proximity correction?  """
+    The package ezdxf is required for DXF read/write operations.  """
 
-import glob, itertools
+import itertools
 import numpy as np
-import re
 import ezdxf
-import time
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 import warnings
@@ -622,6 +617,26 @@ def typewriter_sort(com, n = SMALLEST_SCALE):
     X = -np.floor(com/n)[:,0]*n
     Y = -np.floor(com/n)[:,1]*n
     return np.lexsort((X, Y))[::-1]
+    
+def walking_sort(com_list, starting_point = None):
+    if not starting_point:
+        
+    else:
+        start = starting_point
+        
+    sorted_idx = np.empty(len(com_list), dtype=np.int)
+    sorted_idx[:] = np.nan
+
+    for i in range(len(com_list)):
+        # find index of com closest to start
+        for j in np.argsort(pnt_pnt_dist(com_list, start)):
+                if j not in sorted_idx:
+                    sorted_idx[i] = j
+                    start = com[j]
+                    break
+                else:
+                    continue
+    return sorted_idx)
 
 #####################################
 ### ASC output for Raith software ###

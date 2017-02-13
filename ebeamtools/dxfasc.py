@@ -165,6 +165,23 @@ def close_all_polygons(poly_list, warn = True):
 
     return poly_list
 
+def sort_by_position(pnts, n = SMALLEST_SCALE):
+    """ Sort polygons left to right, top to bottom, based on the location of
+        their center of mass.
+        
+        Args:
+            pnts (array): 2D numpy array of coordinates 
+                
+        Kwargs: 
+            n (float): grid in microns to round COM coordinates to
+                
+        Returns:
+            array: numpy array of indices that sort com """
+
+    X = -np.floor(pnts/n)[:,0]*n
+    Y = -np.floor(pnts/n)[:,1]*n
+    return np.lexsort((X, Y))[::-1]
+
 def same_shape(verts0,verts1):
     """ Check if two lists of vertices contain the same points. 
     
@@ -920,14 +937,15 @@ class Layers:
 
         # find center of all layers together
         *junk, center = bounding_box(self.poly_dict, origin='center')
-        self.writefield_center = {'__ALL__': center}
+        self.writefield_centers = {'__ALL__': center}
         
         # find centers of individual layers
         for key, val in self.poly_dict.items():
             *junk, center = bounding_box({key: val}, origin='center')
-            self.writefield_center[key] = center
+            self.writefield_centers[key] = center
 
-        print(self.writefield_center)
+        for key, val in self.writefield_centers.items():
+            print('{0}: {1:.1f}, {2:.1f}'.format(key, val[0], val[1]))
         
     def plot(self, ax, extent=None, layers=None):
         """ Plot the layers from filename on ax with bounds given by size. 
@@ -939,7 +957,7 @@ class Layers:
                 extent (list): [xmin, xmax, ymin, ymax] """
 
         if layers is None:
-            working dict = self.poly_dict
+            working_dict = self.poly_dict
         else:
             if type(layers)==type(''):
                 layers = [layers]
@@ -1009,9 +1027,9 @@ class Layers:
             # get and sort vertices
             verts = self.poly_dict[l]
             verts = np.array([v+shift for v in verts]) 
-            com = polyUtility(verts, polyCOM)
-            ind_sorted = sort_by_position(com)
-            verts = verts[ind_sorted]
+#             com = polyUtility(verts, polyCOM)
+#             ind_sorted = sort_by_position(com)
+#             verts = verts[ind_sorted]
         
             for v in verts:
                 msp.add_lwpolyline(v, dxfattribs={'layer':l})
@@ -1038,7 +1056,7 @@ class Layers:
 
     
         if layers is None:
-            working dict = self.poly_dict
+            working_dict = self.poly_dict
         else:
             if type(layers)==type(''):
                 layers = [layers]
@@ -1063,9 +1081,9 @@ class Layers:
             # get and sort polygons for this layer
             verts = working_dict[l]
             verts = np.array([v+shift for v in verts]) 
-            com = polyUtility(verts, polyCOM)
-            ind_sorted = sort_by_position(com)
-            verts = verts[ind_sorted]
+#             com = polyUtility(verts, polyCOM)
+#             ind_sorted = sort_by_position(com)
+#             verts = verts[ind_sorted]
             
             if 'ALIGN' in l:            
                 # open file, write header

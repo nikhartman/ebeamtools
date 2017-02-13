@@ -6,8 +6,9 @@ from ebeamtools import dxfasc
 import importlib
 ortools_spec = importlib.util.find_spec("ortools")
 if ortools_spec is None:
-    ORTOOLS = False
+    NO_ORTOOLS = True
 else:
+    NO_ORTOOLS = False
     from ortools.constraint_solver import pywrapcp
     from ortools.constraint_solver import routing_enums_pb2
 
@@ -69,6 +70,9 @@ def travelling_ebeam_sort(poly_list, timeout = 3):
         center of mass coordinates for each polygon in poly_list.
         
         timeout is in seconds. """
+        
+    if NO_ORTOOLS:
+        raise ImportError('Cannot use TSP sort without the \'ortools\' package')
     
     com = dxfasc.polyUtility(poly_list, dxfasc.polyCOM)
     

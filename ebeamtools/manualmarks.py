@@ -4,12 +4,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
-import scipy
-from skimage import io, img_as_float
 from skimage import transform as tf
-import os
 from datetime import datetime
-import time
 import ezdxf
 from ebeamtools import dxfasc
 

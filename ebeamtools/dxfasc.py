@@ -620,7 +620,9 @@ def typewriter_sort(com, n = SMALLEST_SCALE):
     
 def walking_sort(com_list, starting_point = None):
     if not starting_point:
-        
+        # start in the lower left corner
+        # need some code for that
+        pass
     else:
         start = starting_point
         
@@ -636,7 +638,7 @@ def walking_sort(com_list, starting_point = None):
                     break
                 else:
                     continue
-    return sorted_idx)
+    return sorted_idx
 
 #####################################
 ### ASC output for Raith software ###
@@ -906,7 +908,7 @@ class Layers:
         
             print('Time to write {0}: {1:.1f} min'.format(layer, (dose*(total_area*1e-8)/(current*1e-6))/60.0))
     
-    def find_writefield_center(self, offset = (0,0)):
+    def find_writefield_centers(self):
         """ Locate the center of the writefield for given layers.
             Results are given using the coordinates of the original drawing
             unless offset != (0,0). In which case, center is (coordinates
@@ -916,14 +918,18 @@ class Layers:
             filename (str): str containing filename of dxf file
             layer (str) -- string or list of layer names """
 
+        # find center of all layers together
         *junk, center = bounding_box(self.poly_dict, origin='center')
-        center = center - offset
-
-        print('center of writefield: {0:.1f},{1:.1f}'.format(-1*center[0],-1*center[1]))
-        self.writefield_center = -1*center
-        return(-1*center)
+        self.writefield_center = {'__ALL__': center}
         
-    def plot(self, ax, extent=None):
+        # find centers of individual layers
+        for key, val in self.poly_dict.items():
+            *junk, center = bounding_box({key: val}, origin='center')
+            self.writefield_center[key] = center
+
+        print(self.writefield_center)
+        
+    def plot(self, ax, extent=None, layers=None):
         """ Plot the layers from filename on ax with bounds given by size. 
     
             Args:
@@ -932,13 +938,24 @@ class Layers:
                 layers (list): str or list of strings containing layer names
                 extent (list): [xmin, xmax, ymin, ymax] """
 
-        ll, ur, center, bsize, shift = bounding_box(self.poly_dict, origin='center')
+        if layers is None:
+            working dict = self.poly_dict
+        else:
+            if type(layers)==type(''):
+                layers = [layers]
+            elif type(layers)==type([]):
+                pass
+            else:
+                print("Layers should be a string or list of strings")
+            working_dict = {k: self.poly_dict[k] for k in layers}
+
+        ll, ur, center, bsize, shift = bounding_box(working_dict, origin='center')
 
         pmin = np.floor(ll.min()/10)*10
         pmax = np.ceil(ur.max()/10)*10
     
         colors = itertools.cycle([plt.cm.Accent(i) for i in np.linspace(0, 1, 6)])
-        for key, val in self.poly_dict.items():
+        for key, val in working_dict.items():            
             verts = np.array([v+shift for v in val])
         
             if 'ALIGN' in key:
@@ -1001,7 +1018,7 @@ class Layers:
 
         dwg.saveas(file[:-4]+'_edited.dxf')
             
-    def process_files_for_npgs(self, pos_sort_n = SMALLEST_SCALE, origin='ignore'):
+    def process_files_for_npgs(self, layers = None, origin='ignore'):
         # fix this
         """ order elements by location, export DC2 files
         
@@ -1020,20 +1037,31 @@ class Layers:
                 None """
 
     
-        colors = (plt.cm.Accent(np.linspace(0,1,len(self.layers)))[:,:-1]*256).astype(dtype='uint8')   
-        
-        ll, ur, center, bsize, shift = bounding_box(self.poly_dict, origin=origin)
+        if layers is None:
+            working dict = self.poly_dict
+        else:
+            if type(layers)==type(''):
+                layers = [layers]
+            elif type(layers)==type([]):
+                pass
+            else:
+                print("Layers should be a string or list of strings")
+            working_dict = {k: self.poly_dict[k] for k in layers}
     
-        id = '-'.join([l for l in self.layers if 'ALIGN' not in l])
+        colors = (plt.cm.Accent(np.linspace(0,1,len(layers)))[:,:-1]*256).astype(dtype='uint8')   
+        
+        ll, ur, center, bsize, shift = bounding_box(working_dict, origin=origin)
+    
+        id = '-'.join([l for l in layers if 'ALIGN' not in l])
 
         if id != '':
             f = open(self.filename[:-4]+'_{0}.dc2'.format(id), 'w')
             write_header_dc2(f, ll, ur, self.layers)
 
-        for i, l, c in zip(range(len(self.layers)), self.layers, colors):
+        for i, l, c in zip(range(len(layers)), layers, colors):
         
             # get and sort polygons for this layer
-            verts = self.poly_dict[l]
+            verts = working_dict[l]
             verts = np.array([v+shift for v in verts]) 
             com = polyUtility(verts, polyCOM)
             ind_sorted = sort_by_position(com)

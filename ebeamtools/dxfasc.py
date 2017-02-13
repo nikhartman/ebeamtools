@@ -613,50 +613,6 @@ def bounding_box(poly_dict, origin='ignore'):
 #     #  round to nearest multiple of 'resolution' because this method can't be very accurate
 #     return np.clip(np.round(np.array([m*x + b for x in data])/resolution)*resolution, doseMin, doseMax)
 
-######################################################
-### Functions to define a write order for polygons ###
-######################################################
-
-def typewriter_sort(com, n = SMALLEST_SCALE):
-    """ Sort polygons left to right, top to bottom, based on the location of
-        their center of mass.
-        
-        Args:
-            com (array): 2D numpy array of the center of mass coordinates for
-                each polygon
-                
-        Kwargs: 
-            n (float): grid in microns to round COM coordinates to
-                
-        Returns:
-            array: numpy array of indices that sort com """
-
-    X = -np.floor(com/n)[:,0]*n
-    Y = -np.floor(com/n)[:,1]*n
-    return np.lexsort((X, Y))[::-1]
-    
-def walking_sort(com_list, starting_point = None):
-    if not starting_point:
-        # start in the lower left corner
-        # need some code for that
-        pass
-    else:
-        start = starting_point
-        
-    sorted_idx = np.empty(len(com_list), dtype=np.int)
-    sorted_idx[:] = np.nan
-
-    for i in range(len(com_list)):
-        # find index of com closest to start
-        for j in np.argsort(pnt_pnt_dist(com_list, start)):
-                if j not in sorted_idx:
-                    sorted_idx[i] = j
-                    start = com[j]
-                    break
-                else:
-                    continue
-    return sorted_idx
-
 #####################################
 ### ASC output for Raith software ###
 #####################################

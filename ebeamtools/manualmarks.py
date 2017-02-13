@@ -1,4 +1,4 @@
-# a python implementation of manual markers alignment
+""" a python implementation of manual markers alignment """
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt

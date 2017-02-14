@@ -7,7 +7,8 @@ import numpy as np
 from skimage import transform as tf
 from datetime import datetime
 import ezdxf
-from ebeamtools import dxfasc
+from ebeamtools.polygons import polyCOM, polyUtility
+from ebeamtools import drawing
 
 # sources:
 # http://stackoverflow.com/questions/21654008/matplotlib-drag-overlapping-points-interactively
@@ -200,8 +201,8 @@ def align_from_file(im_file, dxf_file, marker_layer):
 
     # import alignment marker positions
     dxf = ezdxf.readfile(dxf_file)
-    verts = dxfasc.get_vertices(dxf, marker_layer, warn=True)
-    com = dxfasc.polyUtility(verts, dxfasc.polyCOM)
+    verts = drawing.get_vertices(dxf, marker_layer, warn=True)
+    com = polyUtility(verts, polyCOM)
     
     # do manual alignment and wait for output image
     im_file_new, insert_pos, dpmm, im_shape = align_markers(im_file, com)

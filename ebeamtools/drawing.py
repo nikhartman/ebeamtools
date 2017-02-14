@@ -268,45 +268,6 @@ def bounding_box(poly_dict, origin='ignore'):
     else:
         shift = np.array([0,0])
         return ll, ur, center, bsize, shift
-        
-##############################################
-### Calculations to determine dose scaling ###
-##############################################
-
-# the idea here was to write a function that scales the dose 
-# according to the width of the polygon, 
-# which is estimated from the vertex positions
-# see Nik's thesis for some details
-
-# def geometry_to_dose(verts, doseMin, doseMax):
-#     """ calculate approximate width of polygon. scale ebeam dose accordingly. """
-#     
-#     widths = 2*polyUtility(
-#                         polyverts, polyArea)/polyUtility(
-#                                             polyverts, polyPerimeter)
-
-# def geometry_to_dose(verts, doseMin, doseMax):
-#     """ takes an array of polygon vertices. returns and array of dose values calculated
-#         by dividing perimeter by area and using some empirical evidence to scale to the 
-#         proper range of doses. the total doses are scaled and limited by doseMin and doseMax. """
-# 
-#     data = polyUtility(verts, polyPerimeter)/abs(polyUtility(verts, polyArea))
-#     
-#     #different size scales for different writefields
-#     if get_writefield(verts) == 1000:
-#         pMin = 0.04; pMax = 1.1
-#     else:
-#         pMin = 1.0; pMax = 7.0
-#     
-#     #  split up range into 20 steps, round steps to nearest 10
-#     resolution =max(np.floor((doseMax-doseMin)/200)*10, 1.0)
-#     
-#     m = (doseMax-doseMin)/(pMax-pMin)
-#     b = doseMax - m*pMax
-#     
-#     #  clip data to within limits to make sure nothing gets a totally ridiculous dose
-#     #  round to nearest multiple of 'resolution' because this method can't be very accurate
-#     return np.clip(np.round(np.array([m*x + b for x in data])/resolution)*resolution, doseMin, doseMax)
 
 #####################################
 ### ASC output for Raith software ###

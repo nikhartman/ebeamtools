@@ -2,7 +2,7 @@
 
 # import some polygon functions
 import numpy as np
-from ebeamtools.polygons import polyCOM, polyUtility
+from ebeamtools.polygons import polyCOM, polyUtility, get_starting_points, get_ending_points
 
 # check if ortools is installed
 import importlib
@@ -83,7 +83,11 @@ def travelling_ebeam_sort(poly_list, timeout = 0):
     if not ORTOOLS:
         raise ImportError('Cannot use TSP sort without the \'ortools\' package')
     
+    # not clear if using center of mass
+    # or actual starting and ending points is better
     com = polyUtility(poly_list, polyCOM)
+    starts = get_starting_points(poly_list)
+    ends = get_ending_points(poly_list)
     
     # create distance matrix and define callback function
     matrix = EuclideanDistanceCallback(com, com)

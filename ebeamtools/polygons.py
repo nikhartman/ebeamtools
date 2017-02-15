@@ -296,6 +296,33 @@ def split_line2poly(verts):
     for i in range(n):
         out.append(np.array([verts[i],verts[i+1],verts[-i-2],verts[-i-1],verts[i]]))
     return out
+    
+def pnt_pnt_dist(vi, vj):
+    """ vi and vj are polygon vertices"""
+    return np.sqrt(np.sum(((vi-vj)**2), axis=0))
+    
+# def rounded_argmax(a, min_val = dxfasc.SMALLEST_SCALE):
+#     a = (a/min_val).astype('int')
+#     return np.argmax(a) # returns the first occurance of the maximum 
+#                         # should be the right choice for squares
+                        
+def last_point(verts):
+    x0 = verts[0] # vertex 0
+    x1 = verts[1] # vertex 1
+    d = np.zeros(len(verts)-3)
+    for i, x_vert in enumerate(verts[2:-1]):
+        # find point along 0->1 that forms perpendicular line with 0->1 and intersects COM
+        A = np.array([[x0[1]-x1[1],x1[0]-x0[0]],[x1[0]-x0[0],x1[1]-x0[1]]])
+        b = np.array([(x1[1]-x0[1])*x0[0]-(x1[0]-x0[0])*x0[1],-(x1[1]-x0[1])*x_vert[1]-(x1[0]-x0[0])*x_vert[0]])
+        x_intersect = np.linalg.solve(A,-b)
+        d[i] = pnt_pnt_dist(x_vert, x_intersect)
+    return verts[np.argmax(d)+2]
+    
+def get_ending_points(poly_list):
+    return np.array([last_point(v) for v in poly_list])
+
+def get_starting_points(poly_list):
+    return np.array([v[0] for v in poly_list])
 
 def list_to_nparray_safe(poly_list):
     """ Safe way to convert a list of polygon verticies to a 

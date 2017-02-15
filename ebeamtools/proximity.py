@@ -3,7 +3,7 @@
     
     Maybe someday this will turn into a real homemade proximity correction algorithm. """
     
-    
+import numpy as np
 from ebeamtools.polygons import polyArea, polyPerimeter, polyUtility
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -12,20 +12,17 @@ from matplotlib.colors import LinearSegmentedColormap
 # this colormap is heplful in that it is linear in the green channel
 # that channel will be used to hold dose information
 # while still making sensible looking plots
-
-# adjust this so red and blue extend up further
-# the lower half of this colormap is kind of useless
-# the upper half could use a lot more contrast
+# it is a little ugly, though
 
 cdict = {'red':   ((0.0, 0.8, 0.8),
-                   (0.66, 0.8, 0.8),
+                   (0.4, 0.5, 0.5),
                    (1.0, 0.5, 0.5)),
 
          'green': ((0.0, 0.0, 0.0),
                    (1.0, 1.0, 1.0)),
 
          'blue':  ((0.0, 0.8, 0.8),
-                   (0.9, 0.8, 0.8),
+                   (0.6, 0.8, 0.8),
                    (1.0, 0.5, 0.5))}
 
 lin_green = LinearSegmentedColormap('LinearGreen', cdict)
@@ -35,7 +32,7 @@ def get_widths(verts):
     
     return 2*polyUtility(verts, polyArea)/polyUtility(verts, polyPerimeter)
     
-def scale_by_width(verts, min_width, max_width, min_dose, max_dose):
+def scale_by_width(verts, min_width, max_width):
     """ scale dose by inverse polygon width. widths are in microns. 
         dose values are in percentage of full dose. 
         
@@ -47,12 +44,10 @@ def scale_by_width(verts, min_width, max_width, min_dose, max_dose):
     min_val = 1.0/max_width
     max_val = 1.0/min_width
     
-    m = (max_dose-min_dose)/(max_val-min_val)
-    b = max_dose - m*max_val
+    m = 1.0/(max_val-min_val)
+    b = 1.0 - m*max_val
     
     scaling = np.clip(np.round(np.array([m*v + b for v in vals])/0.01)*0.01, 
-                            min_dose, max_dose)
+                            0.0, 1.0)
     
-    return lin_green(scaling)
-    
-# add dose scaling into drawing.py
+    return lin_green(scaling)[:,0:3]

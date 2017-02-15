@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
 import warnings
 from ebeamtools import sorting
+from ebeamtools import proximity
 import ebeamtools.polygons as pg
 
 SMALLEST_SCALE = 5e-4 # um, distances smaller than this number are considered zero
@@ -402,6 +403,7 @@ def write_layer_dc2(f, layer_num, poly_list, colors):
         Returns: None """ 
     
     if colors.shape == (len(poly_list),3):
+        # a color was given for each polygon
         pass 
     elif colors.shape == (3,):
         # a single RGB value was given
@@ -639,17 +641,14 @@ class Layers:
             # get and sort vertices
             verts = self.poly_dict[l]
             verts = np.array([v+shift for v in verts]) 
-#             com = polyUtility(verts, polyCOM)
-#             ind_sorted = sort_by_position(com)
-#             verts = verts[ind_sorted]
         
             for v in verts:
                 msp.add_lwpolyline(v, dxfattribs={'layer':l})
 
         dwg.saveas(file[:-4]+'_edited.dxf')
             
-    def process_files_for_npgs(self, layers = None, origin='ignore', sort_type = 'tsp', 
-                                sort_timeout = 0):
+    def process_files_for_npgs(self, layers = None, origin='ignore', sort_type = None, 
+                                sort_timeout = 0, dose_scaling = False, scaling_params = []):
         # fix this
         """ order elements by location, export DC2 files
         
@@ -682,6 +681,8 @@ class Layers:
                 print("Layers should be a string or list of strings")
             working_dict = {k: self.poly_dict[k] for k in layers}
     
+        # create a unique set of colors for layers
+        # this will be overwritten if dose scaling is used
         colors = (plt.cm.Accent(np.linspace(0,1,len(layers)))[:,:-1]*256).astype(dtype='uint8')   
         
         ll, ur, center, bsize, shift = bounding_box(working_dict, origin=origin)
@@ -699,6 +700,7 @@ class Layers:
             verts = np.array([v+shift for v in verts]) 
             
             if 'ALIGN' in l:
+                # always sort alignment marks like a typewriter
                 sort_idx = sorting.typewriter_sort(verts, SMALLEST_SCALE)
                 verts = verts[sort_idx]
                 
@@ -715,13 +717,25 @@ class Layers:
                 save_alignment_info(self.filename, l, verts)
             
             else:
-                if sort_type == 'tsp':
+                # sort vertices
+                if sort_type is None:
+                    sort_idx = np.arange(len(verts))
+                elif sort_type == 'tsp':
                     sort_idx = sorting.travelling_ebeam_sort(verts, timeout = sort_timeout)
                 elif sort_type == 'typewriter':
                     sort_idx = sorting.typewriter_sort(verts, SMALLEST_SCALE)
                 else:
                     raise TypeError('Invalid sorting type specified.')
-                write_layer_dc2(f, i+1, verts, c)
+                verts = verts[sort_idx]
+                    
+                if dose_scaling:
+                    if len(scaling_params)==2:
+                        # overwrite layer color with list
+                        c = proximity.scale_by_width(verts, *scaling_params)
+                    else:
+                        raise ValueError('You must provide all scaling parameters: \
+                                            [min_width, max_width]')
+                write_layer_dc2(f, i+1, verts, (255*c).astype('uint8'))
                 
         if id != '':
             print('pattern output: ' + self.filename[:-4]+'_{0}.dc2'.format(id))

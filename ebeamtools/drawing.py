@@ -63,22 +63,56 @@ def print_layer_names(filename):
 ### Import polygons from layers ###
 ###################################
     
-def import_polyline(ent, warn=True):
+def import_polyline(ent, split_lines = True, warn=True):
     """ A fucntion to import polygon entities from a drawing. Remove z coordinates, 
         convert list to numpy array, remove any duplicate vertices.
         
         Args:
-            ent (dxfgrabber.entity): object representing the polygon
+            ent (ezdxf.entity): object representing the polygon
         
         Returns
             np.ndarray: list of x,y coordinates for polygon vertices """
             
-            
-    # this thing does not work right
-    # I think it will need the same kind of logic as lwpolyline        
-    with ent.points() as pnts:
-        verts = np.array(pnts)
-        return [remove_duplicate_vertices(verts[:,0:2])]
+      
+        
+    verts = np.zeros((ent.__len__(), 5))
+    for i, v in enumerate(ent.vertices()):
+        verts[i,0:2] = v.dxf.location[0:2]
+        verts[i,2:] = (v.dxf.start_width, v.dxf.end_width, v.dxf.bulge)
+
+    closed = ent.is_closed
+
+    check_width = (np.count_nonzero(abs(verts[:,2:4].flatten()-verts[0,2]) > SMALLEST_SCALE))
+    if(check_width==0):
+        # if all of the elements in columns 2+3 of verts are equal
+        # this is a line of constant width (could be width=0)
+        const_width = True
+        width = verts[0,2]
+    elif(check_width > 0):
+        # this is a line of variable width
+        const_width = False
+        width = np.nan
+        if warn:
+            print('VARIABLE WIDTH POLYLINES NOT SUPPORTED. DXFTYPE = LWPOLYLINE. {0}'.format(verts[:,0:2]))
+        return []
+    
+    verts = verts[:,0:2] # strip the width information now that we know it
+    
+    if (width<SMALLEST_SCALE and closed): 
+        # closed polygons, lines have no width
+        # return vertices as they are without the closing point
+        return [pg.remove_duplicate_vertices(verts, SMALLEST_SCALE)]
+    elif (width<SMALLEST_SCALE and not closed):
+        # most likely an unclosed polygon
+        # add it and it will be fixed later.
+        return [pg.remove_duplicate_vertices(verts, SMALLEST_SCALE)]
+    elif (width>SMALLEST_SCALE and not closed): # lines with constant width
+        verts = pg.line2poly_const(verts, width)
+        if verts is not None:
+            if split_lines:
+                return pg.split_line2poly(verts)
+            else:
+                return [verts]
         
 def import_lwpolyline(ent, split_lines=True, warn=True):
     # should always return a list of numpy.ndarrays, even if there is only one list element
@@ -157,9 +191,9 @@ def get_vertices(dxf, layer, warn=True):
     for ent in dxf.entities:
         if ent.dxf.layer.upper().replace(' ', '_') == layer:
             i+=1
-#             print(ent.dxftype())
+#             print(i, ent.dxftype())
             if ent.dxftype() == 'POLYLINE':
-#                 poly_list += import_polyline(ent)
+                poly_list += import_polyline(ent)
                 pass
             elif ent.dxftype() == 'LWPOLYLINE':
                 poly_list += import_lwpolyline(ent)
@@ -440,8 +474,8 @@ def write_alignment_layers_dc2(f, poly_list, layer_names):
         layer_txt += verts_block_dc2(v, color) # add block for marker scan
 
         # define and add lines for cross inside box
-        com = polyCOM(v) # find center of box
-        side = np.sqrt(polyArea(v)) # length of one side of the box (or close enough)
+        com = pg.polyCOM(v) # find center of box
+        side = np.sqrt(pg.polyArea(v)) # length of one side of the box (or close enough)
         line0 = np.array([com-np.array([side/4.0,0]), # horizontal line
                           com+np.array([side/4.0,0])])
         line1 = np.array([com-np.array([0,side/4.0]), # vertical line
@@ -470,7 +504,7 @@ def save_alignment_info(file, layername, poly_list):
             poly_list (list): list of 2D numpy arrays that contain x,y vertices defining polygons """
             
     with open(file[:-4]+'_{0}.txt'.format(layername), 'w') as f:
-        com = polyUtility(poly_list, polyCOM)
+        com = pg.polyUtility(poly_list, pg.polyCOM)
         f.write('MARKER LOCATIONS: \r\n')
         f.write(str(np.round(com*1000)/1000))
         f.write('\r\nVECTOR FROM MARKER 0: \r\n')
@@ -515,7 +549,7 @@ class Layers:
         self.layers = [l.upper().replace (" ", "_") for l in layers] # fix strings
 
         all_layers = get_layer_names(self.dxf)
-        for l in layers:
+        for l in self.layers:
             if l not in all_layers:
                 raise KeyError('{0} IS NOT A LAYERNAME'.format(l))
                         
@@ -535,7 +569,7 @@ class Layers:
             if 'ALIGN' in layer:
                 continue
             verts = self.poly_dict[layer]
-            total_area = polyUtility(verts, polyArea).sum() # areas are in um^2
+            total_area = pg.polyUtility(verts, pg.polyArea).sum() # areas are in um^2
         
             print('Time to write {0}: {1:.1f} min'.format(layer, (dose*(total_area*1e-8)/(current*1e-6))/60.0))
     
@@ -607,6 +641,7 @@ class Layers:
                 ax.set_ylim(pmin, pmax)
         
             ax.grid('on')
+            ax.set_axisbelow(True)
             
     def save_as_dxf(self, origin='ignore'):
         """ Load dxf file(s), convert all objects to polygons, 

@@ -1,5 +1,5 @@
-""" The module name is a bit misleading. this is not a real proximity correction. rather,
-    it uses the width of lines in order to scale the dose each polygon in a pattern gets.
+""" The module name is a bit misleading. This is not a real proximity correction. Rather,
+    it uses the width of lines in order to scale the dose each polygon gets.
     
     Maybe someday this will turn into a real homemade proximity correction algorithm. """
     
@@ -51,3 +51,5 @@ def scale_by_width(verts, min_width, max_width):
                             0.0, 1.0)
     
     return lin_green(scaling)[:,0:3]
+    
+    

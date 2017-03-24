@@ -157,7 +157,7 @@ def import_lwpolyline(ent, split_lines=True, warn=True):
             else:
                 return [verts]
 
-def get_vertices(dxf, layer, warn=True):
+def get_vertices(dxf, layer, split_lines = True, warn=True):
     """ Get list of vertices from dxf object. 
     
         This is certainly full of bugs. It has only been tested with Illustrator CS5 
@@ -193,10 +193,10 @@ def get_vertices(dxf, layer, warn=True):
             i+=1
 #             print(i, ent.dxftype())
             if ent.dxftype() == 'POLYLINE':
-                poly_list += import_polyline(ent)
+                poly_list += import_polyline(ent, split_lines=split_lines)
                 pass
             elif ent.dxftype() == 'LWPOLYLINE':
-                poly_list += import_lwpolyline(ent)
+                poly_list += import_lwpolyline(ent, split_lines=split_lines)
                         
             # add additional dxftypes here
                 
@@ -214,7 +214,7 @@ def get_vertices(dxf, layer, warn=True):
 ### Operations on multiple layers ###
 #####################################
     
-def import_multiple_layers(dxf, layers, warn=True):
+def import_multiple_layers(dxf, layers, split_lines=True, warn=True):
     """ Import multiple layers from dxf drawing into a dictionary.
     
         Args:
@@ -241,7 +241,7 @@ def import_multiple_layers(dxf, layers, warn=True):
     poly_dict = {}
     for l in layers:
         if l in all_layers:
-            poly_dict[l] = get_vertices(dxf, l, warn=warn)
+            poly_dict[l] = get_vertices(dxf, l, split_lines=split_lines, warn=warn)
         else:
             if warn:
                 print('LAYER: {0} NOT CONTAINED IN DXF'.format(l))
@@ -534,7 +534,7 @@ def plot_layers(ax, filename, layers, extent=None):
 class Layers:
     """ class used to process layers for ebeam writing """
     
-    def __init__(self, filename, layers):
+    def __init__(self, filename, layers, split_lines = True):
     
         self.filename = filename
         self.dxf = ezdxf.readfile(filename)
@@ -553,7 +553,7 @@ class Layers:
             if l not in all_layers:
                 raise KeyError('{0} IS NOT A LAYERNAME'.format(l))
                         
-        self.poly_dict = import_multiple_layers(self.dxf, self.layers, warn=True)
+        self.poly_dict = import_multiple_layers(self.dxf, self.layers, split_lines=split_lines, warn=True)
         
     def estimate_writetime(self, dose, current):
         """ Estimate write time for given layers.

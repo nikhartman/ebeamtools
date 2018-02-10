@@ -767,7 +767,7 @@ class Layers:
                     if scaling_method is 'width':
                         if len(scaling_params)==2:
                             # overwrite layer color with list
-                            c = proximity.scale_by_width(verts, *scaling_params)
+                            c = proximity.scale_by_width(verts, *scaling_params, *dose_params)
                         else:
                             raise ValueError('You must provide all scaling parameters: \
                                                 [min_width, max_width]')

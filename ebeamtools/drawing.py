@@ -686,7 +686,7 @@ class Layers:
         dwg.saveas(file[:-4]+'_edited.dxf')
             
     def process_files_for_npgs(self, layers = None, origin='ignore', sort_type = None, 
-                                sort_timeout = 0, dose_scaling = False, scaling_params = []):
+                                sort_timeout = 0, dose_scaling = False, scaling_method='width', scaling_params = [], dose_params = []):
         # fix this
         """ order elements by location, export DC2 files
         
@@ -767,12 +767,19 @@ class Layers:
                 verts = verts[sort_idx]
                     
                 if dose_scaling:
-                    if len(scaling_params)==2:
+                    if scaling_method is 'width':
+                        if len(scaling_params)==2:
+                            # overwrite layer color with list
+                            c = proximity.scale_by_width(verts, *scaling_params, *dose_params)
+                        else:
+                            raise ValueError('You must provide all scaling parameters: \
+                                                [min_width, max_width]')
+                    elif scaling_method is 'distance':
                         # overwrite layer color with list
-                        c = proximity.scale_by_width(verts, *scaling_params)
+                            c = proximity.scale_by_center_dist(verts,*dose_params)
                     else:
-                        raise ValueError('You must provide all scaling parameters: \
-                                            [min_width, max_width]')
+                        raise TypeError('Scaling method must be "width" or "distance".')
+
                 write_layer_dc2(f, i+1, verts, (255*c).astype('uint8'))
                 
         if id != '':

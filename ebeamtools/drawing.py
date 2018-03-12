@@ -119,7 +119,7 @@ def import_lwpolyline(ent, split_lines=True, warn=True):
 
     with ent.points() as pnts:
         verts = np.array(pnts)
-        
+    
     # logic to sort out what type of object ent is
     closed = ent.closed # true if shape is closed
     
@@ -150,7 +150,7 @@ def import_lwpolyline(ent, split_lines=True, warn=True):
         # add it and it will be fixed later.
         return [pg.remove_duplicate_vertices(verts, SMALLEST_SCALE)]
     elif (width>SMALLEST_SCALE and not closed): # lines with constant width
-        verts = pg.line2poly_const(verts, width)
+        verts = pg.line2poly_const(pg.remove_duplicate_vertices(verts, SMALLEST_SCALE), width)
         if verts is not None:
             if split_lines:
                 return pg.split_line2poly(verts)
@@ -191,18 +191,21 @@ def get_vertices(dxf, layer, split_lines = True, warn=True):
     for ent in dxf.entities:
         if ent.dxf.layer.upper().replace(' ', '_') == layer:
             i+=1
-#             print(i, ent.dxftype())
             if ent.dxftype() == 'POLYLINE':
                 poly_list += import_polyline(ent, split_lines=split_lines)
                 pass
             elif ent.dxftype() == 'LWPOLYLINE':
-                poly_list += import_lwpolyline(ent, split_lines=split_lines)
-                        
+                try:
+                    poly_list += import_lwpolyline(ent, split_lines=split_lines)
+                except Exception as e:
+                    print(e)    
             # add additional dxftypes here
                 
             else:
                 if warn:
                     print('NOT A KNOWN TYPE ({0}) -- LAYER: {1}'.format(ent.dxftype(), layer))
+    
+    poly_list = [p for p in poly_list if len(p)>1]
     
     poly_list = pg.close_all_polygons(poly_list, SMALLEST_SCALE, warn=warn) # make sure all polygons are closed
     poly_list = pg.remove_duplicate_polygons(poly_list, SMALLEST_SCALE, warn=warn) # remove duplicates

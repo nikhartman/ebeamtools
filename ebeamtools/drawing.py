@@ -683,7 +683,7 @@ class Layers:
             for v in verts:
                 msp.add_lwpolyline(v, dxfattribs={'layer':l})
 
-        dwg.saveas(file[:-4]+'_edited.dxf')
+        dwg.saveas(self.filename[:-4]+'_edited.dxf')
 
     def process_files_for_npgs(self, layers = None, origin='ignore',
                                 sort_type = None, sort_timeout = 0,
